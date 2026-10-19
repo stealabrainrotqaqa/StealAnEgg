@@ -5,17 +5,14 @@ local TextChatService = game:GetService("TextChatService")
 
 local FIREBASE_URL = "https://stealaneggnotifier-default-rtdb.firebaseio.com/chat_logs.json"
 
--- VARSA ESKİ ÇALIŞAN SCRIPT'İ DURDUR (Donmayı/Kasmayı Önler)
+-- Eski bağlantıları kapat (Kasmayı/Donmayı önler)
 if _G.ChatTrackerConnection then
     for _, conn in ipairs(_G.ChatTrackerConnection) do
         pcall(function() conn:Disconnect() end)
     end
 end
-if _G.ChatTrackerThread then
-    pcall(function() task.cancel(_G.ChatTrackerThread) end)
-end
-
 _G.ChatTrackerConnection = {}
+
 local reportedMessages = {}
 
 local function sendToFirebase(senderName, chatText)
@@ -40,19 +37,18 @@ local function sendToFirebase(senderName, chatText)
     end
 end
 
-local function processText(sender, text)
+local function processMessage(sender, text)
     if not text or text == "" then return end
     
-    -- Aynı mesajın defalarca gitmesini önle
-    local uniqueId = sender .. ":" .. text
-    if reportedMessages[uniqueId] then return end
-    reportedMessages[uniqueId] = true
+    local uniqueKey = sender .. ":" .. text
+    if reportedMessages[uniqueKey] then return end
+    reportedMessages[uniqueKey] = true
     
     sendToFirebase(sender, text)
     print("[CHAT LOG] " .. sender .. ": " .. text)
 end
 
--- 1. YENİ TEXTCHATSERVICE DİNLEYİCİSİ (Oyuncular & Sistem Kanalı)
+-- 1. YENİ SOHBET SİSTEMİ (TextChatService)
 pcall(function()
     local textChannels = TextChatService:FindFirstChild("TextChannels")
     if textChannels then
@@ -65,43 +61,20 @@ pcall(function()
                         senderName = player.Name
                     end
                 end
-                processText(senderName, msg.Text)
+                processMessage(senderName, msg.Text)
             end)
             table.insert(_G.ChatTrackerConnection, conn)
         end
     end
 end)
 
--- 2. HER TÜRLÜ SİSTEM VE İNSAN MESAJINI EKRANDAN TARAMA (Sistem Mesajları İçin)
-_G.ChatTrackerThread = task.spawn(function()
-    while task.wait(0.5) do
-        pcall(function()
-            local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-            if playerGui then
-                -- PlayerGui altındaki tüm TextLabel'ları (Chat ve Duyuru kutularını) tara
-                for _, descendant in ipairs(playerGui:GetDescendants()) do
-                    if descendant:IsA("TextLabel") and descendant.Visible and descendant.Text ~= "" then
-                        local parentName = descendant.Parent and descendant.Parent.Name:lower() or ""
-                        local isChatRelated = parentName:find("chat") or parentName:find("message") or parentName:find("frame") or parentName:find("label")
-                        
-                        if isChatRelated then
-                            local text = descendant.Text
-                            local sender = "[SİSTEM / EKRAN]"
-                            
-                            -- Eğer "OyuncuAdi: Mesaj" şeklindeyse ismi ayır
-                            if text:find(":") then
-                                local parts = string.split(text, ":")
-                                sender = parts[1]
-                                text = table.concat(parts, ":", 2)
-                            end
-                            
-                            processText(sender, text)
-                        end
-                    end
-                end
-            end
-        end)
-    end
+-- 2. KLASİK SOHBET SİSTEMİ (Legacy Chat)
+pcall(function()
+    local conn = Players.PlayerChatted:Connect(function(chatType, player, message)
+        local senderName = player and player.Name or "[SİSTEM]"
+        processMessage(senderName, message)
+    end)
+    table.insert(_G.ChatTrackerConnection, conn)
 end)
 
-print("Steal an Egg - Tam Kapsamlı Chat Dinleyicisi Aktif!")
+print("Steal an Egg - Sadece Sohbet (Chat) Dinleyici Aktif!")
