@@ -1,4 +1,3 @@
--- nega
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -53,13 +52,13 @@ local function processText(sender, text)
     print("[CHAT LOG] " .. sender .. ": " .. text)
 end
 
--- 1. YENİ TEXTCHATSERVICE DİNLEYİCİSİ (Oyuncu ve Sistem Kanalı)
+-- 1. YENİ TEXTCHATSERVICE DİNLEYİCİSİ (Oyuncular & Sistem Kanalı)
 pcall(function()
     local textChannels = TextChatService:FindFirstChild("TextChannels")
     if textChannels then
         for _, channel in ipairs(textChannels:GetChildren()) do
             local conn = channel.MessageReceived:Connect(function(msg)
-                local senderName = "SİSTEM"
+                local senderName = "[SİSTEM]"
                 if msg.TextSource and msg.TextSource.UserId then
                     local player = Players:GetPlayerByUserId(msg.TextSource.UserId)
                     if player then
@@ -73,24 +72,29 @@ pcall(function()
     end
 end)
 
--- 2. DÖNGÜ (Eski Chat UI ve Ekran Bildirim Taraması)
+-- 2. HER TÜRLÜ SİSTEM VE İNSAN MESAJINI EKRANDAN TARAMA (Sistem Mesajları İçin)
 _G.ChatTrackerThread = task.spawn(function()
-    while task.wait(1) do
+    while task.wait(0.5) do
         pcall(function()
             local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
             if playerGui then
-                local chat = playerGui:FindFirstChild("Chat") or playerGui:FindFirstChild("TextChatService")
-                if chat then
-                    for _, descendant in ipairs(chat:GetDescendants()) do
-                        if descendant:IsA("TextLabel") and descendant.Text ~= "" then
-                            -- Eğer "OyuncuAdi: Mesaj" şeklindeyse ismi ayır
+                -- PlayerGui altındaki tüm TextLabel'ları (Chat ve Duyuru kutularını) tara
+                for _, descendant in ipairs(playerGui:GetDescendants()) do
+                    if descendant:IsA("TextLabel") and descendant.Visible and descendant.Text ~= "" then
+                        local parentName = descendant.Parent and descendant.Parent.Name:lower() or ""
+                        local isChatRelated = parentName:find("chat") or parentName:find("message") or parentName:find("frame") or parentName:find("label")
+                        
+                        if isChatRelated then
                             local text = descendant.Text
-                            local sender = "SİSTEM"
+                            local sender = "[SİSTEM / EKRAN]"
+                            
+                            -- Eğer "OyuncuAdi: Mesaj" şeklindeyse ismi ayır
                             if text:find(":") then
                                 local parts = string.split(text, ":")
                                 sender = parts[1]
                                 text = table.concat(parts, ":", 2)
                             end
+                            
                             processText(sender, text)
                         end
                     end
@@ -100,4 +104,4 @@ _G.ChatTrackerThread = task.spawn(function()
     end
 end)
 
-print("Steal an Egg - Canlı Chat Dinleyici Aktif!")
+print("Steal an Egg - Tam Kapsamlı Chat Dinleyicisi Aktif!")
