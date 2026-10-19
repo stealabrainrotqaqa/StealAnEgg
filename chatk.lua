@@ -1,0 +1,1 @@
+if _G.ChatTrackerConnection then for _, c in ipairs(_G.ChatTrackerConnection) do pcall(function() c:Disconnect() end) end _G.ChatTrackerConnection = nil end print("[KAPATILDI] Chat dinleyici durduruldu.")
