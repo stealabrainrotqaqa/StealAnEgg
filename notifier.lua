@@ -2,10 +2,9 @@ local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
--- Firebase Realtime Database URL'in
-local FIREBASE_URL = "https://stealaneggnotifier-default-rtdb.firebaseio.com/egg_logs.json"
+-- Senin Firebase URL'in
+local FIREBASE_URL = "https://stealaneggnotifier-default-rtdb.firebaseio.com/eggs_logs.json"
 
--- Daha önce bildirilen nesnelerin spam yapmaması için hafıza tablosu
 local reportedObjects = {}
 
 local function sendToFirebase(tier, textContent, objName)
@@ -34,8 +33,6 @@ end
 
 local function checkText(str, sourceObj)
     if not str or type(str) ~= "string" then return end
-    
-    -- Nesneyi benzersiz şekilde tanımla
     if reportedObjects[sourceObj] then return end
     
     local lowerStr = str:lower()
@@ -43,45 +40,39 @@ local function checkText(str, sourceObj)
     if lowerStr:find("eternal") then
         reportedObjects[sourceObj] = true
         sendToFirebase("Eternal", str, sourceObj.Name)
-        print("[TESPİT] Eternal bulundu: " .. sourceObj:GetFullName())
+        print("[TESPİT - PART] Eternal bulundu: " .. sourceObj:GetFullName())
     elseif lowerStr:find("divine") then
         reportedObjects[sourceObj] = true
         sendToFirebase("Divine", str, sourceObj.Name)
-        print("[TESPİT] Divine bulundu: " .. sourceObj:GetFullName())
+        print("[TESPİT - PART] Divine bulundu: " .. sourceObj:GetFullName())
     end
 end
 
--- Tüm Workspace ve Arayüz Taraması (No Lag)
-local function scanFullGame()
-    -- 1. Workspace altındaki tüm Part / Model / Nesneleri tara
+-- Sadece Workspace'teki 3D Part ve Part İçi Nesneleri Tarayan Fonksiyon
+local function scanPhysicalParts()
     for _, obj in ipairs(workspace:GetDescendants()) do
-        -- Nesne ismi kontrolü
-        checkText(obj.Name, obj)
-        
-        -- Eğer 3D yazı, TextLabel veya StringValue ise içerik kontrolü
-        if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
-            checkText(obj.Text, obj)
-        elseif obj:IsA("StringValue") then
-            checkText(obj.Value, obj)
-        end
-    end
-    
-    -- 2. Oyuncu Ekran Arayüzlerini (UI/GUI) tara
-    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-    if playerGui then
-        for _, guiObj in ipairs(playerGui:GetDescendants()) do
-            if guiObj:IsA("TextLabel") or guiObj:IsA("TextButton") then
-                checkText(guiObj.Text, guiObj)
+        -- Sadece BasePart (Part, MeshPart, UnionOperation vb.) olan veya direkt bir Part'ın içinde olan öğeleri tara
+        if obj:IsA("BasePart") then
+            -- 1. Part'ın kendi ismini kontrol et
+            checkText(obj.Name, obj)
+            
+            -- 2. Part'ın üzerine yapıştırılmış SurfaceGui, BillboardGui veya 3D yazıları kontrol et
+            for _, child in ipairs(obj:GetDescendants()) do
+                if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox") then
+                    checkText(child.Text, child)
+                elseif child:IsA("StringValue") then
+                    checkText(child.Value, child)
+                end
             end
         end
     end
 end
 
--- Her 1 saniyede bir tüm haritayı kasma yapmadan tara
+-- Saniyede bir 3D Part taraması yap
 task.spawn(function()
     while task.wait(1) do
-        pcall(scanFullGame)
+        pcall(scanPhysicalParts)
     end
 end)
 
-print("Steal an Egg - Derin Workspace & Harita Taraması Başlatıldı!")
+print("Steal an Egg - Sadece 3D Part Taraması Aktif!")
