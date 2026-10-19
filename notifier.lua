@@ -3,7 +3,7 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
 -- Firebase Realtime Database URL'in
-local FIREBASE_URL = "https://stealaneggnotifier-default-rtdb.firebaseio.com/egg_logs.json"
+local FIREBASE_URL = "https://stealaneggnotifier-default-rtdb.firebaseio.com/egag_logs.json"
 
 local reportedObjects = {}
 
